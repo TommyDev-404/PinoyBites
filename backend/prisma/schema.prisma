@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model cart_items {
+  cart_item_id Int       @id @default(autoincrement())
+  cart_id      Int
+  product_id   Int
+  quantity     Int
+  created_at   DateTime? @db.Timestamp(6)
+  carts        carts     @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cart_id")
+  products     products  @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cart_product")
+}
+
+model carts {
+  cart_id    Int          @id @default(autoincrement())
+  user_id    Int
+  cart_items cart_items[]
+  users      users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cart_user")
+}
+
+model favorite_items {
+  favorite_item_id Int       @id @default(autoincrement())
+  favorite_id      Int
+  product_id       Int
+  favorites        favorites @relation(fields: [favorite_id], references: [favorite_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_favorite_id")
+  products         products  @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_favorite_product")
+}
+
+model favorites {
+  favorite_id    Int              @id @default(autoincrement())
+  user_id        Int
+  favorite_items favorite_items[]
+  users          users            @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_favorite_user")
+}
+
+model notifications {
+  notif_id         Int               @id @default(autoincrement())
+  user_id          Int?
+  notif_type       notif_types
+  target_role      target_role_type
+  order_id         Int?
+  is_read          Boolean           @default(false)
+  created_at       DateTime          @default(now()) @db.Timestamp(6)
+  message          String
+  reply_id         Int?
+  status           order_status?
+  feedback_replies feedback_replies? @relation(fields: [reply_id], references: [reply_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_feedback_replies")
+  orders           orders?           @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notif_order")
+  users            users?            @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notif_user")
+}
+
+model order_items {
+  order_item_id Int       @id @default(autoincrement())
+  order_id      Int
+  product_id    Int
+  name          String
+  image_url     String
+  price         Decimal   @db.Decimal(10, 2)
+  quantity      Int
+  subtotal      Decimal   @db.Decimal(10, 2)
+  delivery_fee  Decimal   @db.Decimal(10, 2)
+  created_at    DateTime? @db.Timestamp(6)
+  orders        orders    @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_id")
+  products      products  @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_product")
+}
+
+model orders {
+  order_id            Int                 @id @default(autoincrement())
+  user_id             Int
+  order_date          DateTime            @db.Date
+  shipping_address    String
+  special_instruction String
+  status              order_status
+  total_price         Decimal             @db.Decimal(10, 2)
+  payment_method      payment_method_type
+  order_time          String?             @db.VarChar(255)
+  date_completed      DateTime?           @db.Date
+  promo_code          String              @default("None") @db.VarChar(255)
+  created_at          DateTime            @default(now()) @db.Timestamp(6)
+  notifications       notifications[]
+  order_items         order_items[]
+  users               users               @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_user")
+  reviews             reviews[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model products {
+  product_id     Int              @id @default(autoincrement())
+  name           String
+  description    String
+  price          Decimal          @db.Decimal(10, 2)
+  image_url      String
+  avg_rating     Decimal          @db.Decimal(3, 2)
+  total_reviews  Int              @default(0)
+  category       String           @db.VarChar(255)
+  is_new         Boolean          @default(false)
+  ingredients    Json
+  steps          Json
+  created_at     DateTime         @default(now()) @db.Date
+  cart_items     cart_items[]
+  favorite_items favorite_items[]
+  order_items    order_items[]
+  reviews        reviews[]
+}
+
+model users {
+  user_id         Int               @id @default(autoincrement())
+  username        String            @db.VarChar(255)
+  email           String            @unique @db.VarChar(200)
+  contact_num     String?           @db.VarChar(20)
+  address         String?           @db.VarChar(255)
+  role            user_role
+  password        String
+  hash_pass       String
+  profile_image   String?
+  loyalty_tier    String            @default("None") @db.VarChar(255)
+  created_at      DateTime          @default(now()) @db.Timestamp(6)
+  carts           carts[]
+  favorites       favorites[]
+  notifications   notifications[]
+  orders          orders[]
+  password_resets password_resets[]
+  reviews         reviews[]
+  user_bans       user_bans[]
+  user_promos     user_promos[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model loyalty_tiers {
+  id             Int           @id @default(autoincrement())
+  tier_name      String        @db.VarChar(50)
+  required_spent Decimal       @db.Decimal(10, 2)
+  discount       Int
+  valid_days     Int
+  created_at     DateTime?     @default(now()) @db.Timestamp(6)
+  user_promos    user_promos[]
+}
+
+model password_resets {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  expires_at DateTime @db.Timestamptz(6)
+  used       Boolean? @default(false)
+  code       String   @db.Char(6)
+  users      users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_reset_user")
+
+  @@index([user_id], map: "idx_password_resets_user_id")
+}
+
+model user_bans {
+  ban_id     Int       @id @default(autoincrement())
+  user_id    Int
+  reason     String
+  banned_at  DateTime? @default(now()) @db.Timestamp(6)
+  expires_at DateTime? @db.Timestamp(6)
+  users      users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ban_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_promos {
+  id            Int           @id(map: "promo_codes_pkey") @default(autoincrement())
+  user_id       Int
+  tier_id       Int
+  discount      Int
+  expires_at    DateTime      @db.Timestamp(6)
+  created_at    DateTime?     @default(now()) @db.Timestamp(6)
+  loyalty_tiers loyalty_tiers @relation(fields: [tier_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_tier")
+  users         users         @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+}
+
+model feedback_replies {
+  reply_id      Int             @id @default(autoincrement())
+  review_id     Int
+  reply         String
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  reviews       reviews         @relation(fields: [review_id], references: [review_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_feedback_reply_review")
+  notifications notifications[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reviews {
+  review_id          Int                @id @default(autoincrement())
+  user_id            Int
+  product_id         Int?
+  order_id           Int?
+  type               String
+  rating             Decimal            @db.Decimal(3, 2)
+  comment            String
+  created_at         DateTime           @default(now()) @db.Timestamp(6)
+  is_featured_review Boolean?           @default(false)
+  is_replied         Boolean?           @default(false)
+  feedback_replies   feedback_replies[]
+  orders             orders?            @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_reviews_order")
+  products           products?          @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_reviews_product")
+  users              users              @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_reviews_user")
+}
+
+enum order_status {
+  Processing
+  In_Transit @map("In-Transit")
+  Cancelled
+  Returned
+  Delivered
+  Pending
+  All
+}
+
+enum payment_method_type {
+  Gcash
+  COD
+}
+
+enum user_role {
+  admin
+  user
+}
+
+enum ban_status {
+  active
+  revoked
+  expired
+}
+
+enum notif_types {
+  new_order
+  order_update
+  order_cancelled
+  new_user
+  promo
+  account_banned
+  account_active
+  review
+  admin_feedback
+}
+
+enum target_role_type {
+  admin
+  user
+}
